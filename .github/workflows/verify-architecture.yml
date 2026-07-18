@@ -59,6 +59,7 @@ jobs:
         run: node test/ipc-test.js 2>&1
         continue-on-error: true
       - name: Summary
+        shell: bash
         run: |
           echo "### PoC 1: IPC Test - ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
           echo "| Status | Value |" >> $GITHUB_STEP_SUMMARY
@@ -103,6 +104,7 @@ jobs:
         run: python -m pytest test/ -v --tb=short -x 2>&1
         continue-on-error: true
       - name: Summary
+        shell: bash
         run: |
           echo "### PoC 2: Unified Memory - ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
           echo "| Test | Status |" >> $GITHUB_STEP_SUMMARY
@@ -135,12 +137,13 @@ jobs:
           python-version: '3.11'
       - name: Install Dependencies
         run: |
-          pip install langgraph langchain-core aiosqlite pytest 2>&1 | tail -3
+          pip install langgraph langchain-core aiosqlite langgraph-checkpoint-sqlite pytest 2>&1 | tail -3
       - name: Run Agent Tests
         id: test
         run: python -m pytest test/ -v --tb=short -x 2>&1
         continue-on-error: true
       - name: Summary
+        shell: bash
         run: |
           echo "### PoC 3: Stateful Agent - ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
           echo "| Test | Status |" >> $GITHUB_STEP_SUMMARY
@@ -181,6 +184,7 @@ jobs:
         run: python -m pytest test/test_uia.py -v --tb=short 2>&1
         continue-on-error: true
       - name: Summary
+        shell: bash
         run: |
           echo "### PoC 4: Browser & OS Control - ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
           echo "| Test | Status |" >> $GITHUB_STEP_SUMMARY
@@ -235,6 +239,7 @@ jobs:
           print('SECURITY GATE PASSED')
           "
       - name: Summary
+        shell: bash
         run: |
           echo "### PoC 5: Pre-Crime Security - ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
           echo "| Metric | Status |" >> $GITHUB_STEP_SUMMARY
