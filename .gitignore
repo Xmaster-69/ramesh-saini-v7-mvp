@@ -9,3 +9,6 @@ __pycache__/
 ci-artifacts/
 downloaded-reports/
 *.db\n*.db-shm\n*.db-wal
+*.db
+*.db-shm
+*.db-wal
