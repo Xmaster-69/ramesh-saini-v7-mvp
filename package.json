@@ -1,0 +1,17 @@
+{
+  "name": "ramesh-saini-v7.1-poc",
+  "version": "1.0.0",
+  "description": "Ramesh Saini v7.1 Architecture Proof-of-Concept Monorepo",
+  "private": true,
+  "scripts": {
+    "poc:ipc": "cd poc-ipc && npm test",
+    "poc:memory": "cd poc-memory && python -m pytest test/ -v",
+    "poc:agent": "cd poc-agent && python -m pytest test/ -v",
+    "poc:control": "cd poc-control && npm test",
+    "poc:security": "cd poc-security && python -m pytest test/ -v",
+    "test:all": "npm run poc:ipc; npm run poc:memory; npm run poc:agent; npm run poc:control; npm run poc:security"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

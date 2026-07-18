@@ -1,0 +1,5 @@
+langgraph>=0.2.0,<1
+langchain-core>=0.3.0,<1
+langchain-openai>=0.2.0,<1
+pydantic>=2.9.0,<3
+aiosqlite>=0.20.0,<1

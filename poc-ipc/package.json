@@ -1,0 +1,13 @@
+{
+  "name": "poc-ipc",
+  "version": "1.0.0",
+  "description": "PoC 1: Size & IPC - Electron + Embedded Python FastIPC",
+  "main": "src/main.js",
+  "scripts": {
+    "test": "node test/ipc-test.js",
+    "start": "electron src/main.js"
+  },
+  "devDependencies": {
+    "electron": "^29.0.0"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "poc-control",
+  "version": "1.0.0",
+  "description": "PoC 4: Browser & OS Control - Raw CDP + UIA",
+  "scripts": {
+    "test": "node test/cdp-test.js"
+  }
+}

@@ -1,0 +1,271 @@
+name: Ramesh Saini v7.1 Architecture Verification
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      any_changed: ${{ steps.changes.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            any:
+              - 'poc-*/**'
+              - '.github/workflows/**'
+
+  # ============================================================
+  # PoC 1: The Size & IPC Test (Electron + Embedded Python)
+  # ============================================================
+  poc-1-ipc:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.any_changed == 'true' || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: poc-ipc
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt 2>&1 | tail -3
+          npm ci 2>&1 | tail -3 || npm install
+      - name: Validate Python Server
+        run: python3 -c "import ast; ast.parse(open('src/python_server.py').read()); print('Syntax OK')"
+      - name: Run IPC Test
+        id: test
+        run: node test/ipc-test.js 2>&1
+        continue-on-error: true
+      - name: Summary
+        run: |
+          echo "### PoC 1: IPC Test - ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
+          echo "| Status | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Test outcome | ${{ steps.test.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          if [ -f ../ci-artifacts/poc-1-report.json ]; then
+            cat ../ci-artifacts/poc-1-report.json >> $GITHUB_STEP_SUMMARY
+          fi
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: poc-1-report-${{ matrix.os }}
+          path: ci-artifacts/poc-1-report.json
+          if-no-files-found: warn
+
+  # ============================================================
+  # PoC 2: The Unified Memory Test (SQLite + SQLite-Vec)
+  # ============================================================
+  poc-2-memory:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.any_changed == 'true' || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: poc-memory
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Dependencies
+        run: |
+          pip install numpy 2>&1 | tail -3
+          pip install -r requirements.txt 2>&1 | tail -3
+          pip install pytest 2>&1 | tail -3
+      - name: Run Memory Tests
+        id: test
+        run: python -m pytest test/ -v --tb=short -x 2>&1
+        continue-on-error: true
+      - name: Summary
+        run: |
+          echo "### PoC 2: Unified Memory - ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
+          echo "| Test | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 10K inserts + hybrid search | ${{ steps.test.outcome }} |" >> $GITHUB_STEP_SUMMARY
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: poc-2-report-${{ matrix.os }}
+          path: ci-artifacts/
+
+  # ============================================================
+  # PoC 3: The Stateful Agent Test (LangGraph Checkpoints)
+  # ============================================================
+  poc-3-agent:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.any_changed == 'true' || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: poc-agent
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Dependencies
+        run: |
+          pip install langgraph langchain-core aiosqlite pytest 2>&1 | tail -3
+      - name: Run Agent Tests
+        id: test
+        run: python -m pytest test/ -v --tb=short -x 2>&1
+        continue-on-error: true
+      - name: Summary
+        run: |
+          echo "### PoC 3: Stateful Agent - ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
+          echo "| Test | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Crash recovery resume | ${{ steps.test.outcome }} |" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================
+  # PoC 4: The Browser & OS Control Test (Raw CDP + UIA)
+  # ============================================================
+  poc-4-control:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.any_changed == 'true' || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: poc-control
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Dependencies
+        run: npm install 2>&1 | tail -3
+      - name: Run CDP Test (Node)
+        id: cdp
+        run: node test/cdp-test.js 2>&1
+        continue-on-error: true
+      - name: Run UIA Test (Python)
+        id: uia
+        run: python -m pytest test/test_uia.py -v --tb=short 2>&1
+        continue-on-error: true
+      - name: Summary
+        run: |
+          echo "### PoC 4: Browser & OS Control - ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
+          echo "| Test | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Raw CDP | ${{ steps.cdp.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| UIA Element Targeting | ${{ steps.uia.outcome }} |" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================
+  # PoC 5: The Pre-Crime Security Test (AST Analysis)
+  # ============================================================
+  poc-5-security:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.any_changed == 'true' || github.event_name == 'workflow_dispatch' }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: poc-security
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Generate Fixtures
+        run: |
+          python3 -c "import sys; sys.path.insert(0,'src'); from precrime_analyzer import create_test_fixtures; create_test_fixtures()"
+      - name: Verify 50+50 Fixtures
+        run: |
+          echo "Malicious: $(ls fixtures/malicious/ | wc -l)"
+          echo "Safe: $(ls fixtures/safe/ | wc -l)"
+      - name: Run Security Tests
+        id: test
+        run: python -m pytest test/ -v --tb=long -x 2>&1
+        continue-on-error: true
+      - name: Security Gate
+        run: |
+          python3 -c "
+          import sys, os
+          sys.path.insert(0, 'src')
+          from precrime_analyzer import PreCrimeSecurityAnalyzer
+          a = PreCrimeSecurityAnalyzer()
+          b = sum(1 for f in os.listdir('fixtures/malicious') if a.analyze(open('fixtures/malicious/'+f).read())['blocked'])
+          p = sum(1 for f in os.listdir('fixtures/safe') if not a.analyze(open('fixtures/safe/'+f).read())['blocked'])
+          tm = len(os.listdir('fixtures/malicious'))
+          ts = len(os.listdir('fixtures/safe'))
+          print(f'Blocked: {b}/{tm} | Passed: {p}/{ts}')
+          assert b == tm, f'FAIL: {b}/{tm} malicious blocked'
+          assert p == ts, f'FAIL: {p}/{ts} safe passed'
+          print('SECURITY GATE PASSED')
+          "
+      - name: Summary
+        run: |
+          echo "### PoC 5: Pre-Crime Security - ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 100% Malicious Block Rate | ${{ steps.test.outcome }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 100% Safe Pass Rate | ${{ steps.test.outcome }} |" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================
+  # Consolidated Report
+  # ============================================================
+  generate-report:
+    needs: [poc-1-ipc, poc-2-memory, poc-3-agent, poc-4-control, poc-5-security]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: poc-*-report-*
+          path: downloaded-reports
+          merge-multiple: true
+      - name: Generate Report
+        run: |
+          python3 .github/workflows/generate-report.py downloaded-reports
+      - name: Upload Verification Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-report
+          path: verification-report.md
+          retention-days: 30
+      - name: Post Report Summary
+        run: cat verification-report.md | head -60 >> $GITHUB_STEP_SUMMARY
