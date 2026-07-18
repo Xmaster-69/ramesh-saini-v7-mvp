@@ -32,7 +32,7 @@ jobs:
   # ============================================================
   poc-1-ipc:
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.any_changed == 'true' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ always() }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
@@ -81,7 +81,7 @@ jobs:
   # ============================================================
   poc-2-memory:
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.any_changed == 'true' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ always() }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
@@ -121,7 +121,7 @@ jobs:
   # ============================================================
   poc-3-agent:
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.any_changed == 'true' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ always() }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
@@ -154,7 +154,7 @@ jobs:
   # ============================================================
   poc-4-control:
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.any_changed == 'true' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ always() }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
@@ -195,7 +195,7 @@ jobs:
   # ============================================================
   poc-5-security:
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.any_changed == 'true' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ always() }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
