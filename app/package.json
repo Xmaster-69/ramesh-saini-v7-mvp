@@ -3,6 +3,7 @@
   "version": "7.1.0-mvp",
   "description": "Ramesh Saini v7.1 — Ironclad MVP Desktop Application",
   "main": "main/main.js",
+  "repository": "https://github.com/Xmaster-69/ramesh-saini-v7-mvp",
   "scripts": {
     "start": "electron .",
     "build:renderer": "mkdir -p renderer/dist && cp renderer/index.html renderer/dist/",

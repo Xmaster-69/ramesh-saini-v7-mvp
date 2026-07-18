@@ -246,7 +246,7 @@ jobs:
             app/dist/
             app/*.log
             %USERPROFILE%\AppData\Local\electron-builder\Cache\**\*.log
-          if-no-files-found: allow
+          if-no-files-found: ignore
 
   # ============================================================
   # Job 4: Linux Build (.AppImage / .deb)
