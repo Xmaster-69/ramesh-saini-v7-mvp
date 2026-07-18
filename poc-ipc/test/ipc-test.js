@@ -60,6 +60,9 @@ async function runTests() {
   // --- Test: Spawn Python subprocess + IPC roundtrip ---
   const bridge = new RameshIPCBridge(serverPath);
   let pythonProcess = null;
+  let latencies = [];
+  let avgLatency = 0;
+  let maxLatency = 0;
 
   try {
     pythonProcess = bridge.spawnPython();
@@ -78,15 +81,15 @@ async function runTests() {
 
     // --- Test: IPC Latency ---
     const LATENCY_ITERATIONS = 50;
-    const latencies = [];
+    latencies = [];
     for (let i = 0; i < LATENCY_ITERATIONS; i++) {
       const start = process.hrtime.bigint();
       await bridge.send('echo', { ping: true });
       const end = process.hrtime.bigint();
       latencies.push(Number(end - start) / 1e6);
     }
-    const avgLatency = latencies.reduce((a, b) => a + b, 0) / latencies.length;
-    const maxLatency = Math.max(...latencies);
+    avgLatency = latencies.reduce((a, b) => a + b, 0) / latencies.length;
+    maxLatency = Math.max(...latencies);
 
     assertTest(
       `IPC average latency < 50ms (got: ${avgLatency.toFixed(2)}ms)`,
