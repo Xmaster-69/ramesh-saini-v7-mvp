@@ -1,6 +1,12 @@
+# Ramesh Saini MVP Backend Dependencies
+# Core
 fastapi>=0.115.0,<1
 uvicorn[standard]>=0.32.0,<1
 pydantic>=2.9.0,<3
 numpy>=1.26.0,<2
-# Optional: sqlite-vec - installs only if available
-# sqlite-vec>=0.1.0
+
+# LangGraph agent
+langgraph>=0.2.0,<3
+langchain-core>=0.3.0,<1
+aiosqlite>=0.20.0,<1
+langgraph-checkpoint-sqlite>=3.0.0,<4

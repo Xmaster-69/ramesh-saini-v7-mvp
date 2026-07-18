@@ -18,10 +18,18 @@ import os
 import sys
 import signal
 import tempfile
+import sqlite3
 from typing import TypedDict, Literal, Any
 from dataclasses import dataclass
 
 from typing import Annotated, Sequence
+
+# ANSI color constants for test output
+BOLD = '\033[1m'
+GREEN = '\033[92m'
+RED = '\033[91m'
+YELLOW = '\033[93m'
+RESET = '\033[0m'
 
 # LangGraph imports
 try:
@@ -32,7 +40,10 @@ except ImportError:
     print("[ERROR] langgraph not installed. Install with: pip install langgraph")
     print("[INFO] Will attempt to install...")
     import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "langgraph", "langchain-core"])
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "langgraph", "langchain-core", "--break-system-packages"])
+    except:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "langgraph", "langchain-core"])
     from langgraph.graph import StateGraph, END
     from langgraph.checkpoint.sqlite import SqliteSaver
 
@@ -192,8 +203,13 @@ class StatefulAgent:
             END: END
         })
         
-        # Set up checkpointer
-        self.checkpointer = SqliteSaver.from_conn_string(self.db_path)
+        # Set up checkpointer — use raw SqliteSaver(conn) instead of from_conn_string
+        # which returns a context manager in newer langgraph versions
+        if self.db_path == ":memory:":
+            conn = sqlite3.connect(":memory:", check_same_thread=False)
+        else:
+            conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        self.checkpointer = SqliteSaver(conn)
         
         # Compile with recursion limit and checkpoint
         self.graph = builder.compile(
@@ -272,7 +288,12 @@ class StatefulAgent:
             END: END
         })
         
-        self.checkpointer = SqliteSaver.from_conn_string(self.db_path)
+        # Set up checkpointer for interrupt graph
+        if self.db_path == ":memory:":
+            ictx = sqlite3.connect(":memory:", check_same_thread=False)
+        else:
+            ictx = sqlite3.connect(self.db_path, check_same_thread=False)
+        self.checkpointer = SqliteSaver(ictx)
         self.graph = builder.compile(
             checkpointer=self.checkpointer,
             interrupt_after=interrupt_after

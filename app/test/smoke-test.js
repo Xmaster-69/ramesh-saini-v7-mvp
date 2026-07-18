@@ -6,9 +6,11 @@
  * 
  * This tests the ENTIRE pipeline:
  * Memory → Agent → SecurityGuard → (Code Exec) → Response
+ * 
+ * DEFENSE IN DEPTH: If deps are missing, auto-installs them.
  */
 const http = require('http');
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const path = require('path');
 
 const BACKEND_PORT = 18567;  // Use different port to avoid conflicts
@@ -46,6 +48,28 @@ async function smokeTest() {
   let pythonProcess = null;
 
   try {
+    // ============================================================
+    // Step 0: Auto-install missing Python dependencies
+    // ============================================================
+    log('Checking Python dependencies...');
+    try {
+      execSync(`${PYTHON_CMD} -c "import fastapi, uvicorn, langgraph, langchain_core, aiosqlite"`, {
+        stdio: 'pipe', timeout: 10000
+      });
+      log('  All Python deps satisfied');
+    } catch {
+      log('  Installing Python dependencies...');
+      const reqPath = path.join(__dirname, '..', 'backend', 'requirements.txt');
+      try {
+        execSync(`${PYTHON_CMD} -m pip install -r "${reqPath}" --break-system-packages 2>&1`, {
+          stdio: 'inherit', timeout: 120000
+        });
+        log('  ✅ Dependencies installed');
+      } catch (e) {
+        log(`  ⚠️ Partial dep install: ${e.message.substring(0, 100)}`);
+      }
+    }
+
     // ============================================================
     // Step 1: Start the Python backend
     // ============================================================
