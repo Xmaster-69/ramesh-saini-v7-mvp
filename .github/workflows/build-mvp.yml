@@ -215,17 +215,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Debug Build Output
+        if: ${{ always() }}
+        continue-on-error: true
         run: |
           echo "=== dist/ contents ==="
-          if exist dist\ (
-            dir dist\ /s
-          ) else (
-            echo "dist/ directory not found"
-          )
+          if exist app\dist\ ( dir app\dist\ /s ) else ( echo "dist/ not found in app" )
           echo "=== Looking for .exe ==="
-          dir /s /b *.exe 2>nul || echo "No .exe found"
-          echo "=== Looking for build logs ==="
-          dir /s /b *.log 2>nul || echo "No .log files"
+          where /r . *.exe 2>nul || echo "No .exe found"
+          echo "=== Build complete ==="
         shell: cmd
 
       - name: Upload Windows Installer
@@ -233,8 +230,8 @@ jobs:
         with:
           name: Ramesh-Saini-MVP-Setup-Win64
           path: |
-            dist/*.exe
-            dist/*.exe.blockmap
+            app/dist/*.exe
+            app/dist/*.exe.blockmap
           if-no-files-found: error
 
       - name: Upload Build Debug Logs
@@ -299,11 +296,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Debug Build Output
+        if: ${{ always() }}
+        continue-on-error: true
         run: |
           echo "=== dist/ contents ==="
-          ls -la dist/ 2>/dev/null || echo "dist/ not found"
+          ls -la app/dist/ 2>/dev/null || echo "dist/ not found in app"
           echo "=== Looking for AppImage ==="
-          find . -name '*.AppImage' -o -name '*.deb' 2>/dev/null | head -10
+          find app/dist -name '*.AppImage' -o -name '*.deb' 2>/dev/null | head -10
+          echo "=== Build complete ==="
 
       - name: Upload Linux Installer
         uses: actions/upload-artifact@v4
