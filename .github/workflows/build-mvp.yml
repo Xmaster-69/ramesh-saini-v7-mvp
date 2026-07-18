@@ -75,6 +75,11 @@ jobs:
           python -m pytest backend/tests/test_api_key_manager.py -v --tb=short 2>&1
         timeout-minutes: 2
 
+      - name: Test PC Control Tools
+        run: |
+          python -m pytest backend/tests/test_pc_tools.py -v --tb=short 2>&1
+        timeout-minutes: 3
+
       - name: Run Backend Smoke Test
         run: |
           echo "=== Starting backend smoke test ==="
