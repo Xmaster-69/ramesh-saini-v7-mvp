@@ -47,8 +47,10 @@ async function runTests() {
 
   // --- Test: Python Server Syntax (dry-run) ---
   const { execSync } = require('child_process');
+  // Use forward slashes for Python -c to avoid Windows path escape issues (e.g. \a in D:\a\...)
+  const pyPath = serverPath.replace(/\\/g, '/');
   try {
-    execSync('python3 -c "import ast; ast.parse(open(\'' + serverPath + '\').read())"', {
+    execSync(`python3 -c "import ast; ast.parse(open('${pyPath}').read())"`, {
       stdio: 'pipe',
       timeout: 10000
     });
