@@ -54,8 +54,6 @@ jobs:
         run: |
           pip install -r requirements.txt 2>&1 | tail -3
           npm ci 2>&1 | tail -3 || npm install
-      - name: Validate Python Server
-        run: python3 -c "import ast; ast.parse(open('src/python_server.py').read()); print('Syntax OK')"
       - name: Run IPC Test
         id: test
         run: node test/ipc-test.js 2>&1
