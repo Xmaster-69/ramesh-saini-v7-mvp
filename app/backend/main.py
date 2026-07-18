@@ -16,6 +16,9 @@ import uvicorn
 from core.memory import MemoryManager
 from core.agent import AgentManager
 from core.sandbox import SandboxExecutor
+from core.tools import AVAILABLE_TOOLS, execute_tool
+from core.api_key_manager import KEY_MANAGER
+from core.llm_router import ROUTER
 from security.guard import GUARD
 
 # Setup logging
@@ -175,6 +178,118 @@ async def get_memory(session_id: str, limit: int = 20):
 @app.get("/security/stats")
 async def security_stats():
     return GUARD.get_stats()
+
+
+# ============================================================
+# API Key Management Endpoints
+# ============================================================
+
+class APIKeyRequest(BaseModel):
+    provider: str
+    key: str = ""
+
+@app.get("/apikeys/status")
+async def apikeys_status():
+    return KEY_MANAGER.get_status()
+
+@app.post("/apikeys/set")
+async def apikeys_set(req: APIKeyRequest):
+    success = KEY_MANAGER.set_key(req.provider, req.key, persist=True)
+    return {"success": success, "provider": req.provider}
+
+@app.post("/apikeys/test")
+async def apikeys_test(req: APIKeyRequest):
+    """Test a provider key by validating its format and making a lightweight API call."""
+    # Validate format
+    valid = KEY_MANAGER._validate_key_format(req.provider, req.key)
+    if not valid:
+        return {"success": False, "error": f"Invalid key format for {req.provider}"}
+    # Store temporarily and try
+    KEY_MANAGER.set_key(req.provider, req.key)
+    return {"success": True, "provider": req.provider, "note": "Key format validated"}
+
+@app.post("/apikeys/remove")
+async def apikeys_remove(req: APIKeyRequest):
+    env_var_map = {
+        "openai": "OPENAI_API_KEY", "anthropic": "ANTHROPIC_API_KEY",
+        "groq": "GROQ_API_KEY", "google": "GEMINI_API_KEY",
+        "mistral": "MISTRAL_API_KEY", "deepseek": "DEEPSEEK_API_KEY",
+        "openrouter": "OPENROUTER_API_KEY",
+    }
+    env_var = env_var_map.get(req.provider)
+    if env_var and env_var in os.environ:
+        del os.environ[env_var]
+    if req.provider in KEY_MANAGER.keys:
+        KEY_MANAGER.keys[req.provider].is_configured = False
+        KEY_MANAGER.keys[req.provider].key_preview = "(not set)"
+    return {"success": True, "provider": req.provider}
+
+@app.get("/apikeys/discover")
+async def apikeys_discover():
+    count = KEY_MANAGER.discover_from_env()
+    return {"count": count, "keys": KEY_MANAGER.get_status()}
+
+
+# ============================================================
+# Tool Execution Endpoints
+# ============================================================
+
+class ToolExecuteRequest(BaseModel):
+    tool_name: str
+    params: dict = {}
+
+@app.post("/tools/execute")
+async def tools_execute(req: ToolExecuteRequest):
+    """Execute a PC Control Tool through the Zero-Trust Guard."""
+    # Guard: validate tool parameters first
+    guard_result = GUARD.validate_tool_params(req.tool_name, req.params)
+    if not guard_result["valid"]:
+        return {
+            "success": False,
+            "error": guard_result["error"],
+            "blocked_reason": guard_result["blocked_reason"],
+            "guarded": True,
+        }
+    # Execute
+    result = execute_tool(req.tool_name, req.params)
+    return result
+
+@app.get("/tools/schemas")
+async def tools_schemas():
+    """Return OpenAI-compatible tool schemas."""
+    schemas = []
+    for name, tool in AVAILABLE_TOOLS.items():
+        properties = {}
+        required = []
+        for pname, pspec in tool["parameters"].items():
+            properties[pname] = {
+                "type": pspec.get("type", "string"),
+                "description": pspec.get("description", ""),
+            }
+            if "default" not in pspec:
+                required.append(pname)
+        schemas.append({
+            "type": "function",
+            "function": {
+                "name": name,
+                "description": tool["description"],
+                "parameters": {"type": "object", "properties": properties, "required": required},
+            },
+        })
+    return {"tools": schemas, "count": len(schemas)}
+
+@app.get("/tools/available")
+async def tools_available():
+    return {"tools": list(AVAILABLE_TOOLS.keys()), "count": len(AVAILABLE_TOOLS)}
+
+
+# ============================================================
+# Model Catalog Endpoints
+# ============================================================
+
+@app.get("/models/catalog")
+async def models_catalog():
+    return ROUTER.get_catalog()
 
 
 # ============================================================

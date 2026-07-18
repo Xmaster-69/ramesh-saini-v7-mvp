@@ -80,6 +80,23 @@ jobs:
           python -m pytest backend/tests/test_pc_tools.py -v --tb=short 2>&1
         timeout-minutes: 3
 
+      - name: Verify Frontend Build
+        run: |
+          echo "=== Renderer status ==="
+          if [ -f renderer/index.html ]; then
+            echo "✅ renderer/index.html exists ($(wc -c < renderer/index.html) bytes)"
+          else
+            echo "❌ renderer/index.html missing"
+            exit 1
+          fi
+          echo "=== Main status ==="
+          for f in main/main.js main/preload.js; do
+            if [ -f "$f" ]; then echo "✅ $f ($(wc -c < $f) bytes)"; else echo "❌ $f missing"; fi
+          done
+          echo "=== Backend status ==="
+          find backend/ -name '*.py' | wc -l | xargs echo "✅ .py files:"
+        working-directory: app
+
       - name: Run Backend Smoke Test
         run: |
           echo "=== Starting backend smoke test ==="

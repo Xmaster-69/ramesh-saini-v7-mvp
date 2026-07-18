@@ -149,6 +149,177 @@ ipcMain.handle('chat:send', async (event, { message, sessionId }) => {
 ipcMain.handle('app:get-backend-url', () => BACKEND_URL);
 
 // ============================================================
+// IPC: API KEYS MANAGEMENT
+// ============================================================
+
+ipcMain.handle('apikeys:get-status', async () => {
+  return httpGet(`${BACKEND_URL}/apikeys/status`);
+});
+
+ipcMain.handle('apikeys:set-key', async (event, { provider, key }) => {
+  return httpPost(`${BACKEND_URL}/apikeys/set`, { provider, key });
+});
+
+ipcMain.handle('apikeys:test-key', async (event, { provider, key }) => {
+  return httpPost(`${BACKEND_URL}/apikeys/test`, { provider, key });
+});
+
+ipcMain.handle('apikeys:remove-key', async (event, { provider }) => {
+  return httpPost(`${BACKEND_URL}/apikeys/remove`, { provider });
+});
+
+ipcMain.handle('apikeys:discover', async () => {
+  return httpGet(`${BACKEND_URL}/apikeys/discover`);
+});
+
+// ============================================================
+// IPC: AGENT CHAT + TOOL EXECUTION
+// ============================================================
+
+ipcMain.handle('agent-chat', async (event, { message, sessionId }) => {
+  // Notify renderer that tool execution is starting
+  if (mainWindow) {
+    mainWindow.webContents.send('agent-tool-update', {
+      status: 'thinking',
+      message: 'Processing your request...'
+    });
+  }
+
+  try {
+    const result = await httpPost(`${BACKEND_URL}/chat`, {
+      message,
+      session_id: sessionId
+    });
+
+    // If the agent used tools, notify renderer
+    if (result.security_checked || result.code_executed) {
+      if (mainWindow) {
+        mainWindow.webContents.send('agent-tool-update', {
+          status: result.security_action === 'block' ? 'blocked' : 'completed',
+          tool: result.code_executed ? 'code_executor' : 'security_guard',
+          message: result.security_action === 'block'
+            ? '⚠️ BLOCKED by Security Guard'
+            : '✅ Tool execution completed',
+          details: result
+        });
+      }
+    }
+
+    return result;
+  } catch (err) {
+    if (mainWindow) {
+      mainWindow.webContents.send('agent-tool-update', {
+        status: 'error',
+        message: `Error: ${err.message}`
+      });
+    }
+    throw err;
+  }
+});
+
+ipcMain.handle('agent-execute-tool', async (event, { toolName, params }) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('agent-tool-update', {
+      status: 'executing',
+      tool: toolName,
+      message: `🔄 Executing: ${toolName}`
+    });
+  }
+
+  try {
+    const result = await httpPost(`${BACKEND_URL}/tools/execute`, {
+      tool_name: toolName,
+      params
+    });
+
+    if (mainWindow) {
+      mainWindow.webContents.send('agent-tool-update', {
+        status: result.success ? 'completed' : 'blocked',
+        tool: toolName,
+        message: result.success
+          ? `✅ ${toolName} completed`
+          : `⚠️ ${toolName} blocked: ${result.error}`,
+        details: result
+      });
+    }
+
+    return result;
+  } catch (err) {
+    if (mainWindow) {
+      mainWindow.webContents.send('agent-tool-update', {
+        status: 'error',
+        tool: toolName,
+        message: `Error: ${err.message}`
+      });
+    }
+    throw err;
+  }
+});
+
+ipcMain.handle('agent-get-tool-schemas', async () => {
+  return httpGet(`${BACKEND_URL}/tools/schemas`);
+});
+
+// ============================================================
+// IPC: SYSTEM STATUS
+// ============================================================
+
+ipcMain.handle('system:get-health', async () => {
+  return httpGet(`${BACKEND_URL}/health`);
+});
+
+ipcMain.handle('system:get-model-catalog', async () => {
+  return httpGet(`${BACKEND_URL}/models/catalog`);
+});
+
+ipcMain.handle('system:get-security-stats', async () => {
+  return httpGet(`${BACKEND_URL}/security/stats`);
+});
+
+// ============================================================
+// HTTP Helpers
+// ============================================================
+
+function httpGet(url) {
+  return new Promise((resolve, reject) => {
+    const req = http.get(url, (res) => {
+      let data = '';
+      res.on('data', c => data += c);
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); }
+        catch { resolve(data); }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(8000, () => { req.destroy(); reject(new Error('Timeout')); });
+  });
+}
+
+function httpPost(url, body) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify(body);
+    const req = http.request(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(data)
+      }
+    }, (res) => {
+      let response = '';
+      res.on('data', c => response += c);
+      res.on('end', () => {
+        try { resolve(JSON.parse(response)); }
+        catch { resolve({ raw: response }); }
+      });
+    });
+    req.on('error', reject);
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Timeout')); });
+    req.write(data);
+    req.end();
+  });
+}
+
+// ============================================================
 // Window Creation
 // ============================================================
 
