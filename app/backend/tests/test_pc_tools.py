@@ -114,11 +114,17 @@ class TestPCTools:
     # ============================================================
 
     def test_8_open_safe_url(self):
-        """Open example.com — should work via HTTP fetch fallback."""
+        """Open example.com — should work via HTTP fetch fallback or CDP."""
         result = open_browser_tool("https://example.com")
         assert result["success"] == True, f"Browser open failed: {result.get('error')}"
         assert result["url"] == "https://example.com"
-        assert "Example" in result.get("title", "") or "content_preview" in result, str(result)[:200]
+        assert result["guarded"] == True
+        # CDP mode: returns pid + note; HTTP mode: returns title + content_preview
+        # Either mode is valid — just verify success
+        if result["method"] == "cdp_launched":
+            assert "pid" in result, f"CDP mode missing pid: {result}"
+        elif result["method"] == "http_fetch":
+            assert "Example" in result.get("title", ""), f"Expected 'Example' in title: {result.get('title')}"
 
     def test_9_open_suspicious_url_blocked(self):
         """Suspicious domain should be blocked by Guard."""
