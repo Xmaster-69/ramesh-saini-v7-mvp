@@ -64,6 +64,16 @@ jobs:
           from langgraph.checkpoint.sqlite import SqliteSaver
           print('✅ All backend dependencies verified')
           "
+      
+      - name: Test LLM Router
+        run: |
+          python -m pytest backend/tests/test_llm_router.py -v --tb=short 2>&1
+        timeout-minutes: 2
+
+      - name: Test API Key Manager
+        run: |
+          python -m pytest backend/tests/test_api_key_manager.py -v --tb=short 2>&1
+        timeout-minutes: 2
 
       - name: Run Backend Smoke Test
         run: |
