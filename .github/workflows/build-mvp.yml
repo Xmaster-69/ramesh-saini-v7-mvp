@@ -23,9 +23,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  PIP_EXTRA: "--break-system-packages"
-
 jobs:
   # ============================================================
   # Job 1: Backend Integration Test (Memory → Agent → Guard → Exec)
@@ -56,13 +53,20 @@ jobs:
 
       - name: Install ALL Python Dependencies
         run: |
-          pip install $PIP_EXTRA -r backend/requirements.txt 2>&1 | tail -20
+          pip install -r backend/requirements.txt 2>&1 | tail -20
+          # Install platform-specific deps
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            pip install pywinauto>=0.6.0 2>&1 | tail -3
+          fi
           # Verify critical imports
           python3 -c "
           import fastapi, uvicorn, pydantic
           import langgraph, langchain_core, aiosqlite
           from langgraph.checkpoint.sqlite import SqliteSaver
+          import pytest
           print('✅ All backend dependencies verified')
+          print(f'   pytest: {pytest.__version__}')
+          print(f'   langgraph: OK')
           "
       
       - name: Test LLM Router
@@ -203,7 +207,7 @@ jobs:
         id: build
         run: |
           echo "=== Starting electron-builder ==="
-          npx electron-builder --win --config.asar=false 2>&1
+          npx electron-builder --win 2>&1
           echo "=== Build exit code: %ERRORLEVEL% ==="
         shell: cmd
         continue-on-error: true
@@ -282,7 +286,7 @@ jobs:
 
       - name: Install Python Dependencies
         run: |
-          pip install $PIP_EXTRA -r backend/requirements.txt 2>&1 | tail -10
+          pip install -r backend/requirements.txt 2>&1 | tail -10
 
       - name: Build Linux App
         id: build

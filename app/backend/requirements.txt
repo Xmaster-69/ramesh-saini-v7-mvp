@@ -12,5 +12,8 @@ aiosqlite>=0.20.0,<1
 langgraph-checkpoint-sqlite>=3.0.0,<4
 
 # PC Control Tools
-pywinauto>=0.6.0,<1    # Windows UI Automation (UIA)
-websockets>=12.0,<16   # Raw CDP WebSocket client
+websockets>=12.0,<16                  # Raw CDP WebSocket client
+# pywinauto>=0.6.0,<1                # Windows UIA — install only on Windows via CI conditional
+
+# Testing (required in CI)
+pytest>=7.0.0,<10
