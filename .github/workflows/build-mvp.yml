@@ -113,7 +113,7 @@ jobs:
         with:
           name: mvp-smoke-report
           path: ci-artifacts/mvp-smoke-report.json
-          if-no-files-found: warn
+          if-no-files-found: ignore
 
   # ============================================================
   # Job 2: Frontend + App Source Prep
@@ -233,9 +233,9 @@ jobs:
         with:
           name: Ramesh-Saini-MVP-Setup-Win64
           path: |
-            app/dist/*.exe
-            app/dist/*.exe.blockmap
-          if-no-files-found: warn
+            dist/*.exe
+            dist/*.exe.blockmap
+          if-no-files-found: error
 
       - name: Upload Build Debug Logs
         if: ${{ failure() || steps.build.outcome == 'failure' }}
@@ -310,9 +310,9 @@ jobs:
         with:
           name: Ramesh-Saini-MVP-Setup-Linux
           path: |
-            app/dist/*.AppImage
-            app/dist/*.deb
-          if-no-files-found: warn
+            dist/*.AppImage
+            dist/*.deb
+          if-no-files-found: ignore
           retention-days: 7
 
   # ============================================================
